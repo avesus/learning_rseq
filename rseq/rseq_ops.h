@@ -279,8 +279,10 @@ try_reclaim_free_slots(uint64_t * v_cpu_ptr,
                        uint32_t   start_cpu) {
     uint64_t ret_reclaimed_slots;
     asm volatile(
-        RSEQ_INFO_DEF(32) RSEQ_CS_ARR_DEF() RSEQ_PREP_CS_DEF()
-            RSEQ_CMP_CUR_VS_START_CPUS()
+        RSEQ_INFO_DEF(32)
+        RSEQ_CS_ARR_DEF()
+        RSEQ_PREP_CS_DEF()
+        RSEQ_CMP_CUR_VS_START_CPUS()
         
         "movq (%[free_v_cpu_ptr_then_temp]), %[ret_reclaimed_slots]\n\t"  // get current free vec
         "testq %[ret_reclaimed_slots], %[ret_reclaimed_slots]\n\t"              // if is 0 nothing to do
@@ -295,7 +297,7 @@ try_reclaim_free_slots(uint64_t * v_cpu_ptr,
         "jmp 2b\n\t"
         RSEQ_END_ABORT_DEF()
         : [ ret_reclaimed_slots ] "+g"(ret_reclaimed_slots)
-        : [ start_cpu ] "r"(start_cpu), 
+        : [ start_cpu ] "g"(start_cpu), 
           [ rseq_abi ] "g"(&__rseq_abi),
           [ v_cpu_ptr ] "g"(v_cpu_ptr),
           [ free_v_cpu_ptr_then_temp ] "g"(free_v_cpu_ptr_then_temp)
@@ -303,7 +305,36 @@ try_reclaim_free_slots(uint64_t * v_cpu_ptr,
     return ret_reclaimed_slots;
 }
 
-uint32_t __attribute__((noinline))
+
+uint64_t __attribute__((noinline))
+try_reclaim_all_free_slots(uint64_t * v_cpu_ptr,
+                           uint64_t * free_v_cpu_ptr,
+                           uint32_t   start_cpu) {
+    uint64_t ret_reclaimed_slots;
+    asm volatile(
+        RSEQ_INFO_DEF(32) RSEQ_CS_ARR_DEF() RSEQ_PREP_CS_DEF()
+            RSEQ_CMP_CUR_VS_START_CPUS()
+        
+        "movq (%[free_v_cpu_ptr]), %[ret_reclaimed_slots]\n\t"  // get current free vec
+        "testq %[ret_reclaimed_slots], %[ret_reclaimed_slots]\n\t"              // if is 0 nothing to do
+        "jz 2f\n\t"
+        "xorq %[ret_reclaimed_slots], (%[v_cpu_ptr])\n\t"       // xor bits
+        "2:\n\t"
+        RSEQ_START_ABORT_DEF()
+        "movq $0, %[ret_reclaimed_slots]\n\t"
+        "jmp 2b\n\t"
+        RSEQ_END_ABORT_DEF()
+        : [ ret_reclaimed_slots ] "+r"(ret_reclaimed_slots)
+        : [ start_cpu ] "g"(start_cpu), 
+          [ rseq_abi ] "g"(&__rseq_abi),
+          [ v_cpu_ptr ] "g"(v_cpu_ptr),
+          [ free_v_cpu_ptr ] "g"(free_v_cpu_ptr)
+        : "memory", "cc", "rax");
+    return ret_reclaimed_slots;
+}
+
+
+uint32_t
 or_if_unset(uint64_t * v_cpu_ptr, uint64_t new_bit_mask, uint32_t start_cpu) {
     asm volatile goto(
         RSEQ_INFO_DEF(32) RSEQ_CS_ARR_DEF() RSEQ_PREP_CS_DEF()

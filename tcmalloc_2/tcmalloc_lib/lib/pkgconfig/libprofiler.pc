@@ -1,0 +1,13 @@
+prefix=/home/noah/programs/classes/active/539/final-project-hello-world/code/other-mallocs/tcmalloc_2/tcmalloc_lib
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: gperftools
+Version: 2.7.90
+Description: Performance tools for C++
+URL: http://code.google.com/p/gperftools/
+Requires:
+Libs: -L${libdir} -lprofiler
+Libs.private: -pthread -lpthread
+Cflags: -I${includedir}
