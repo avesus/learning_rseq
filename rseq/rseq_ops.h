@@ -341,6 +341,38 @@ or_if_unset(uint64_t * v_cpu_ptr, uint64_t new_bit_mask, uint32_t start_cpu) {
             RSEQ_CMP_CUR_VS_START_CPUS()
         /* start critical section contents */
         "testq %[new_bit_mask], (%[v_cpu_ptr])\n\t"
+        "jnz 4f\n\t"
+        "orq %[new_bit_mask], (%[v_cpu_ptr])\n\t"
+        "2:\n\t"  // post_commit_ip - start_ip
+        /* end critical section contents */
+
+        RSEQ_START_ABORT_DEF() "jmp %l[abort]\n\t" RSEQ_END_ABORT_DEF()
+
+        /* start output labels */
+        :
+        /* end output labels */
+
+        /* start input labels */
+        : [ start_cpu ] "g"(start_cpu),
+          [ new_bit_mask ] "g"(new_bit_mask),
+          [ rseq_abi ] "g"(&__rseq_abi),
+          [ v_cpu_ptr ] "g"(v_cpu_ptr)
+        /* end input labels */
+        : "memory", "cc", "rax"
+        : abort);
+    return 0;
+abort:
+    return 1;
+}
+
+
+uint32_t
+xor_if_set(uint64_t * v_cpu_ptr, uint64_t new_bit_mask, uint32_t start_cpu) {
+    asm volatile goto(
+        RSEQ_INFO_DEF(32) RSEQ_CS_ARR_DEF() RSEQ_PREP_CS_DEF()
+            RSEQ_CMP_CUR_VS_START_CPUS()
+        /* start critical section contents */
+        "testq %[new_bit_mask], (%[v_cpu_ptr])\n\t"
         "jz 4f\n\t"
         "xorq %[new_bit_mask], (%[v_cpu_ptr])\n\t"
         "2:\n\t"  // post_commit_ip - start_ip

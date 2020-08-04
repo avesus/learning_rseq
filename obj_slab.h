@@ -73,18 +73,18 @@ constexpr uint64_t inline __attribute__((always_inline)) final_vec_init() {
 template<typename T, uint32_t nvecs = 8, align_policy ap = align_policy::none> //, align_policy ap = align_policy::none>
 struct slab {
 
-    static constexpr const uint32_t true_nvecs =
-        calculate_nvecs<T, nvecs, ap>();
+    static constexpr const uint32_t true_nvecs = nvecs;
+
     uint64_t available_slots[true_nvecs] __attribute__((aligned(64)));
     uint64_t freed_slots[true_nvecs] __attribute__((aligned(64)));
     T        obj_arr[capacity<T, nvecs, ap>()];
 
 
-    slab() {
+    slab() = default; /*{
         memset(available_slots, ~0, (true_nvecs - 1) * sizeof(uint64_t));
         available_slots[true_nvecs - 1] = final_vec_init<T, nvecs, ap>();
         memset(freed_slots, 0, nvecs * sizeof(uint64_t));
-    }
+        }*/
 
 
     void
@@ -105,9 +105,9 @@ struct slab {
     _allocate(uint32_t start_cpu) {
         for (uint32_t i = 0; i < true_nvecs; ++i) {
             // try allocate
-            if (available_slots[i]) {
+            if (~available_slots[i]) {
                 PRINT("(1)Input[%d]: 0x%016lX\n", i, available_slots[i]);
-                const uint32_t idx = _tzcnt_u64(available_slots[i]);
+                const uint32_t idx = _tzcnt_u64(~available_slots[i]);
                 if (or_if_unset(available_slots + i,
                                 ((1UL) << idx),
                                 start_cpu)) {

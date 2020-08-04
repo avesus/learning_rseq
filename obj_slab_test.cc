@@ -16,9 +16,9 @@
 
 #include "slab_manager.h"
 
-const uint32_t os_nvec = 4;
+const uint32_t os_nvec = 8;
 #ifdef SUPER_SLAB
-const uint32_t ss_nvec    = 8;
+const uint32_t ss_nvec    = 1;
 const uint64_t expec_mult = ss_nvec * 64;
 typedef super_slab<uint64_t,
                    ss_nvec,
@@ -41,8 +41,8 @@ typedef slab<uint64_t, os_nvec> test_slab_t;
 #define MAX(X, Y) ((X) > (Y) ? (X) : (Y))
 #define MIN(X, Y) ((X) > (Y) ? (Y) : (X))
 
-#define TEST_SIZE (1 << 18)
-#define NTHREAD   (8)
+#define TEST_SIZE (1 << 17)
+#define NTHREAD   (256)
 
 pthread_barrier_t b;
 
@@ -224,6 +224,7 @@ main(int argc, char ** argv) {
     for (uint32_t f_idx = 0; f_idx < NTEST_FUNCTIONS; f_idx++) {
         for (uint32_t i = 0; i < 8; i++) {
             s[i] = (test_slab_t *)aligned_alloc(64, sizeof(test_slab_t));
+            memset(s[i], 0, 1024);
             new ((void * const)s[i]) test_slab_t();
         }
 

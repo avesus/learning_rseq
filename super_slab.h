@@ -9,14 +9,14 @@ template<typename T,
          uint32_t inner_nvec   = 8,
          typename inner_slab_t = slab<T, inner_nvec>>
 struct super_slab {
-    uint64_t available_obj_slabs[nvecs] __attribute__((aligned(64)));
-    uint64_t freed_obj_slabs[nvecs] __attribute__((aligned(64)));
+    uint64_t     available_obj_slabs[nvecs] __attribute__((aligned(64)));
+    uint64_t     freed_obj_slabs[nvecs] __attribute__((aligned(64)));
     inner_slab_t inner_slabs[64 * nvecs];
 
-    super_slab() {
-        memset(available_obj_slabs, ~0, nvecs * sizeof(uint64_t));
-        memset(freed_obj_slabs, 0, nvecs * sizeof(uint64_t));
-    }
+    super_slab() = default; /*{
+         memset(available_obj_slabs, ~0, nvecs * sizeof(uint64_t));
+         memset(freed_obj_slabs, 0, nvecs * sizeof(uint64_t));
+         }*/
 
     void
     _free(T * addr) {
@@ -34,8 +34,8 @@ struct super_slab {
     _allocate(const uint32_t start_cpu) {
         for (uint32_t i = 0; i < nvecs; ++i) {
             while (1) {
-                while (available_obj_slabs[i]) {
-                    const uint32_t idx = _tzcnt_u64(available_obj_slabs[i]);
+                while (~available_obj_slabs[i]) {
+                    const uint32_t idx = _tzcnt_u64(~available_obj_slabs[i]);
                     const uint64_t ret =
                         (inner_slabs + 64 * i + idx)->_allocate(start_cpu);
                     if (ret > 0x1) {  // fast path of successful allocation
